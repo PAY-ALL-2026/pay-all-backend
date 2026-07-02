@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const db = require("../database");
+const calculateFee = require("../helpers/calculateFee");
 router.get("/payment-history", (req, res) => {
 
     db.all(
@@ -85,19 +86,7 @@ router.post("/execute-payment", (req, res) => {
                         total_amount += item.amount;
                     });
 
-                    let service_fee = 0;
-
-                    if (recipients <= 5)
-                        service_fee = 500;
-                    else if (recipients <= 15)
-                        service_fee = 1000;
-                    else if (recipients <= 30)
-                        service_fee = 2000;
-                    else if (recipients <= 100)
-                        service_fee = 3500;
-                    else
-                        service_fee = 5000;
-
+                   const service_fee = calculateFee(recipients);
                     const total_paid = total_amount + service_fee;
 
                     const reference =
@@ -199,18 +188,7 @@ router.post("/preview-payment", (req, res) => {
                 total_amount += item.amount;
             });
 
-            let service_fee = 0;
-
-            if (recipients <= 5)
-                service_fee = 500;
-            else if (recipients <= 15)
-                service_fee = 1000;
-            else if (recipients <= 30)
-                service_fee = 2000;
-            else if (recipients <= 100)
-                service_fee = 3500;
-            else
-                service_fee = 5000;
+           const service_fee = calculateFee(recipients); 
 
             db.get(
                 "SELECT list_name FROM lists WHERE id = ?",

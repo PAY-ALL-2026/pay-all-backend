@@ -3,15 +3,21 @@ const bcrypt = require("bcrypt");
 const router = express.Router();
 
 const db = require("../database");
+const RESPONSE = require("../helpers/constants");
+const { sendSuccess, sendError } = require("../helpers/response");
+
+/*
+|--------------------------------------------------------------------------
+| SIGNUP
+|--------------------------------------------------------------------------
+*/
 
 router.post("/signup", (req, res) => {
 
     const { name, phone, password } = req.body;
 
     if (!name || !phone || !password) {
-        return res.json({
-            message: "Name, phone and password are required"
-        });
+        return sendError(res, "Name, phone and password are required");
     }
 
     const hashedPassword = bcrypt.hashSync(password, 10);
@@ -22,23 +28,31 @@ router.post("/signup", (req, res) => {
         function (err) {
 
             if (err) {
-                return res.json({
-                    message: err.message
-                });
+                return sendError(res, err.message);
             }
 
-            res.json({
-                message: "User created successfully",
-                id: this.lastID,
-                name,
-                phone,
-                balance: 0
-            });
+            return sendSuccess(
+                res,
+                RESPONSE.SIGNUP_SUCCESS,
+                {
+                    id: this.lastID,
+                    name,
+                    phone,
+                    balance: 0
+                }
+            );
 
         }
     );
 
 });
+
+/*
+|--------------------------------------------------------------------------
+| LOGIN
+|--------------------------------------------------------------------------
+*/
+
 router.post("/login", (req, res) => {
 
     const { phone, password } = req.body;
@@ -49,32 +63,28 @@ router.post("/login", (req, res) => {
         (err, user) => {
 
             if (err) {
-                return res.json({
-                    message: "Database error"
-                });
+                return sendError(res, RESPONSE.DATABASE_ERROR);
             }
 
             if (!user) {
-                return res.json({
-                    message: "User not found"
-                });
+                return sendError(res, RESPONSE.USER_NOT_FOUND);
             }
 
             const passwordMatch = bcrypt.compareSync(password, user.password);
 
             if (!passwordMatch) {
-                return res.json({
-                    message: "Invalid phone or password"
-                });
+                return sendError(res, "Invalid phone or password");
             }
 
-            res.json({
-                message: "Login successful",
+            return sendSuccess(
+                res,
+                RESPONSE.LOGIN_SUCCESS,
                 user
-            });
+            );
 
         }
     );
 
 });
+
 module.exports = router;

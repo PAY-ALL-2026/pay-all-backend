@@ -1,5 +1,7 @@
 const express = require("express");
 const router = express.Router();
+const { sendSuccess, sendError } = require("../helpers/response");
+const RESPONSE = require("../helpers/constants");
 
 const db = require("../database");
 
@@ -14,9 +16,10 @@ router.post("/create-list", (req, res) => {
     const { phone, list_name } = req.body;
 
     if (!phone || !list_name) {
-        return res.json({
-            message: "Phone and list name are required"
-        });
+      return sendError(
+    res,
+    "Phone and list name are required"
+); 
     }
 
     db.run(
@@ -25,16 +28,20 @@ router.post("/create-list", (req, res) => {
         function (err) {
 
             if (err) {
-                return res.json({
-                    message: "Database error"
-                });
+            return sendError(
+    res,
+    RESPONSE.DATABASE_ERROR
+);
             }
 
-            res.json({
-                message: "List created successfully",
-                list_id: this.lastID,
-                list_name
-            });
+         return sendSuccess(
+    res,
+    RESPONSE.LIST_CREATED,
+    {
+        list_id: this.lastID,
+        list_name
+    }
+);  
 
         }
     );
@@ -57,27 +64,19 @@ router.post("/add-recipient", (req, res) => {
     } = req.body;
 
     if (!list_id) {
-        return res.json({
-            message: "List ID is required"
-        });
+    return sendError(res, "List ID is required");    
     }
 
     if (!recipient_name || recipient_name.trim().length < 2) {
-        return res.json({
-            message: "Recipient name is too short"
-        });
+      return sendError(res, "Recipient name is too short");  
     }
 
     if (!destination_identifier || destination_identifier.trim() === "") {
-        return res.json({
-            message: "Destination identifier is required"
-        });
+    return sendError(res, "Destination identifier is required");    
     }
 
     if (!amount || amount <= 0) {
-        return res.json({
-            message: "Amount must be greater than zero"
-        });
+     return sendError(res, "Amount must be greater than zero");   
     }
 
     db.get(
@@ -89,15 +88,14 @@ router.post("/add-recipient", (req, res) => {
         (err, existing) => {
 
             if (err) {
-                return res.json({
-                    message: "Database error"
-                });
+               return sendError(res, RESPONSE.DATABASE_ERROR); 
             }
 
             if (existing) {
-                return res.json({
-                    message: "This destination identifier already exists in the list"
-                });
+             return sendError(
+    res,
+    "This destination identifier already exists in the list"
+);   
             }
 
             db.run(
@@ -113,15 +111,16 @@ router.post("/add-recipient", (req, res) => {
                 function (err) {
 
                     if (err) {
-                        return res.json({
-                            message: "Database error"
-                        });
+                     return sendError(res, RESPONSE.DATABASE_ERROR);   
                     }
 
-                    res.json({
-                        message: "Recipient added successfully",
-                        recipient_id: this.lastID
-                    });
+                return sendSuccess(
+    res,
+    RESPONSE.RECIPIENT_CREATED,
+    {
+        recipient_id: this.lastID
+    }
+);   
 
                 }
             );
@@ -140,11 +139,9 @@ router.get("/list-items", (req, res) => {
 
     const { list_id } = req.query;
 
-    if (!list_id) {
-        return res.json({
-            message: "List ID is required"
-        });
-    }
+   if (!list_id) {
+    return sendError(res, "List ID is required");
+}
 
     db.all(
         `SELECT *
@@ -153,13 +150,15 @@ router.get("/list-items", (req, res) => {
         [list_id],
         (err, rows) => {
 
-            if (err) {
-                return res.json({
-                    message: "Database error"
-                });
-            }
+           if (err) {
+    return sendError(res, RESPONSE.DATABASE_ERROR);
+}
 
-            res.json(rows);
+     return sendSuccess(
+    res,
+    RESPONSE.LIST_ITEMS_FOUND,
+    rows
+);
 
         }
     );
@@ -175,38 +174,30 @@ router.put("/rename-list", (req, res) => {
 
     const { list_id, list_name } = req.body;
 
-    if (!list_id) {
-        return res.json({
-            message: "List ID is required"
-        });
-    }
-
-    if (!list_name || list_name.trim().length < 2) {
-        return res.json({
-            message: "List name is too short"
-        });
-    }
+  if (!list_id) {
+    return sendError(res, "List ID is required");
+}  
+   if (!list_name || list_name.trim().length < 2) {
+    return sendError(res, "List name is too short");
+} 
 
     db.run(
         "UPDATE lists SET list_name = ? WHERE id = ?",
         [list_name, list_id],
         function(err){
 
-            if(err){
-                return res.json({
-                    message:"Database error"
-                });
-            }
+          if (err) {
+    return sendError(res, RESPONSE.DATABASE_ERROR);
+} 
 
-            if(this.changes === 0){
-                return res.json({
-                    message:"List not found"
-                });
-            }
+      if (this.changes === 0) {
+    return sendError(res, RESPONSE.LIST_NOT_FOUND);
+}      
 
-            res.json({
-                message:"List renamed successfully"
-            });
+        return sendSuccess(
+    res,
+    RESPONSE.LIST_RENAMED
+);    
 
         }
     );
@@ -217,21 +208,18 @@ router.delete("/delete-list", (req, res) => {
     const { list_id } = req.body;
 
     if (!list_id) {
-        return res.json({
-            message: "List ID is required"
-        });
-    }
+    return sendError(res, "List ID is required");
+}
 
     db.run(
         "DELETE FROM list_items WHERE list_id = ?",
         [list_id],
         function (err) {
 
-            if (err) {
-                return res.json({
-                    message: "Database error"
-                });
-            }
+            
+         if (err) {
+    return sendError(res, RESPONSE.DATABASE_ERROR);
+}   
 
             db.run(
                 "DELETE FROM lists WHERE id = ?",
@@ -239,21 +227,16 @@ router.delete("/delete-list", (req, res) => {
                 function (err) {
 
                     if (err) {
-                        return res.json({
-                            message: "Database error"
-                        });
-                    }
+    return sendError(res, RESPONSE.DATABASE_ERROR);
+}
 
-                    if (this.changes === 0) {
-                        return res.json({
-                            message: "List not found"
-                        });
-                    }
-
-                    res.json({
-                        message: "List deleted successfully"
-                    });
-
+       if (this.changes === 0) {
+    return sendError(res, RESPONSE.LIST_NOT_FOUND);
+}             
+      return sendSuccess(
+    res,
+    RESPONSE.LIST_DELETED
+);              
                 }
             );
 
@@ -276,9 +259,10 @@ router.put("/edit-recipient", (req, res) => {
         !destination_identifier ||
         !amount
     ) {
-        return res.json({
-            message: "Missing required fields"
-        });
+       return sendError(
+    res,
+    "Missing required fields"
+);
     }
 
     db.run(
@@ -299,20 +283,23 @@ router.put("/edit-recipient", (req, res) => {
         function (err) {
 
             if (err) {
-                return res.json({
-                    message: "Database error"
-                });
+             return sendError(
+    res,
+    RESPONSE.DATABASE_ERROR
+);  
             }
 
             if (this.changes === 0) {
-                return res.json({
-                    message: "Recipient not found"
-                });
+             return sendError(
+    res,
+    RESPONSE.RECIPIENT_NOT_FOUND
+);   
             }
 
-            res.json({
-                message: "Recipient updated successfully"
-            });
+         return sendSuccess(
+    res,
+    RESPONSE.RECIPIENT_UPDATED
+);   
 
         }
     );
@@ -323,9 +310,7 @@ router.get("/my-lists", (req, res) => {
     const { phone } = req.query;
 
     if (!phone) {
-        return res.json({
-            message: "Phone is required"
-        });
+        return sendError(res, "Phone is required");
     }
 
     db.all(
@@ -342,12 +327,14 @@ router.get("/my-lists", (req, res) => {
         (err, rows) => {
 
             if (err) {
-                return res.json({
-                    message: "Database error"
-                });
+                return sendError(res, RESPONSE.DATABASE_ERROR);
             }
 
-            res.json(rows);
+            return sendSuccess(
+                res,
+                RESPONSE.LISTS_FOUND,
+                rows
+            );
 
         }
     );

@@ -47,5 +47,85 @@ db.serialize(() => {
     `);
 
 });
+db.run(`
+CREATE TABLE IF NOT EXISTS settings (
 
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    fee_1_5 INTEGER,
+
+    fee_6_15 INTEGER,
+
+    fee_16_30 INTEGER,
+
+    fee_31_100 INTEGER,
+
+    fee_101_plus INTEGER
+
+)
+`);
+db.get(
+    "SELECT * FROM settings",
+    [],
+    (err, row) => {
+
+        if (!row) {
+
+            db.run(
+                `
+                INSERT INTO settings
+                (
+                    fee_1_5,
+                    fee_6_15,
+                    fee_16_30,
+                    fee_31_100,
+                    fee_101_plus
+                )
+                VALUES (?, ?, ?, ?, ?)
+                `,
+                [
+                    500,
+                    1000,
+                    2000,
+                    3500,
+                    5000
+                ]
+            );
+
+        }
+
+    }
+);
+db.get(
+    "SELECT * FROM settings",
+    [],
+    (err, row) => {
+
+        if (!row) {
+
+            db.run(
+                `
+                INSERT INTO settings
+                (
+                    fee_1_5,
+                    fee_6_15,
+                    fee_16_30,
+                    fee_31_100,
+                    fee_101_plus
+                )
+                VALUES (?, ?, ?, ?, ?)
+                `,
+                [
+                    500,
+                    1000,
+                    2000,
+                    3500,
+                    5000
+                ]
+            );
+
+        }
+
+    }
+);
 module.exports = db;
