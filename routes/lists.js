@@ -22,30 +22,32 @@ router.post("/create-list", (req, res) => {
 ); 
     }
 
-    db.run(
-        "INSERT INTO lists (user_phone, list_name) VALUES (?, ?)",
-        [phone, list_name],
-        function (err) {
+ db.run(
+    `INSERT INTO lists
+    (user_phone, list_name, status)
+    VALUES (?, ?, ?)`,
+    [
+        phone,
+        list_name,
+        "DRAFT"
+    ],
+    function (err) {
 
-            if (err) {
-            return sendError(
-    res,
-    RESPONSE.DATABASE_ERROR
-);
-            }
-
-         return sendSuccess(
-    res,
-    RESPONSE.LIST_CREATED,
-    {
-        list_id: this.lastID,
-        list_name
-    }
-);  
-
+        if (err) {
+            return sendError(res, RESPONSE.DATABASE_ERROR);
         }
-    );
 
+        return sendSuccess(
+            res,
+            RESPONSE.LIST_CREATED,
+            {
+                list_id: this.lastID,
+                list_name
+            }
+        );
+
+    }
+);   
 });
 
 /*
@@ -64,19 +66,19 @@ router.post("/add-recipient", (req, res) => {
     } = req.body;
 
     if (!list_id) {
-    return sendError(res, "List ID is required");    
+        return sendError(res, "List ID is required");
     }
 
     if (!recipient_name || recipient_name.trim().length < 2) {
-      return sendError(res, "Recipient name is too short");  
+        return sendError(res, "Recipient name is too short");
     }
 
     if (!destination_identifier || destination_identifier.trim() === "") {
-    return sendError(res, "Destination identifier is required");    
+        return sendError(res, "Destination identifier is required");
     }
 
     if (!amount || amount <= 0) {
-     return sendError(res, "Amount must be greater than zero");   
+        return sendError(res, "Amount must be greater than zero");
     }
 
     db.get(
@@ -88,14 +90,14 @@ router.post("/add-recipient", (req, res) => {
         (err, existing) => {
 
             if (err) {
-               return sendError(res, RESPONSE.DATABASE_ERROR); 
+                return sendError(res, RESPONSE.DATABASE_ERROR);
             }
 
             if (existing) {
-             return sendError(
-    res,
-    "This destination identifier already exists in the list"
-);   
+                return sendError(
+                    res,
+                    "This destination identifier already exists in the list"
+                );
             }
 
             db.run(
@@ -111,16 +113,30 @@ router.post("/add-recipient", (req, res) => {
                 function (err) {
 
                     if (err) {
-                     return sendError(res, RESPONSE.DATABASE_ERROR);   
+                        return sendError(res, RESPONSE.DATABASE_ERROR);
                     }
 
-                return sendSuccess(
-    res,
-    RESPONSE.RECIPIENT_CREATED,
-    {
-        recipient_id: this.lastID
-    }
-);   
+                    const recipientId = this.lastID;
+
+                    db.run(
+                        "UPDATE lists SET status = 'READY' WHERE id = ?",
+                        [list_id],
+                        (updateErr) => {
+
+                            if (updateErr) {
+                                return sendError(res, RESPONSE.DATABASE_ERROR);
+                            }
+
+                            return sendSuccess(
+                                res,
+                                RESPONSE.RECIPIENT_CREATED,
+                                {
+                                    recipient_id: recipientId
+                                }
+                            );
+
+                        }
+                    );
 
                 }
             );
@@ -334,6 +350,55 @@ router.get("/my-lists", (req, res) => {
                 res,
                 RESPONSE.LISTS_FOUND,
                 rows
+            );
+
+        }
+    );
+
+});
+router.post("/save-list", (req, res) => {
+
+    const {
+        list_id,
+        save_mode
+    } = req.body;
+
+    if (!list_id || !save_mode) {
+        return sendError(res, "List ID and save mode are required");
+    }
+
+    let statusToSet = "READY";
+
+    // Optional logic for future expansion
+    if (save_mode === "WITH_AMOUNTS") {
+        statusToSet = "READY";
+    }
+
+    if (save_mode === "RECIPIENTS_ONLY") {
+        statusToSet = "READY";
+    }
+
+    db.run(
+        `UPDATE lists SET status = ? WHERE id = ?`,
+        [statusToSet, list_id],
+        function (err) {
+
+            if (err) {
+                return sendError(res, RESPONSE.DATABASE_ERROR);
+            }
+
+            if (this.changes === 0) {
+                return sendError(res, RESPONSE.LIST_NOT_FOUND);
+            }
+
+            return sendSuccess(
+                res,
+                "List saved successfully",
+                {
+                    list_id,
+                    status: statusToSet,
+                    save_mode
+                }
             );
 
         }

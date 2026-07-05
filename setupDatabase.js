@@ -2,6 +2,10 @@ const db = require("./database");
 
 db.serialize(() => {
 
+    // ==========================
+    // USERS
+    // ==========================
+
     db.run(`
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -11,6 +15,10 @@ db.serialize(() => {
             balance INTEGER DEFAULT 0
         )
     `);
+
+    // ==========================
+    // PAYMENT HISTORY
+    // ==========================
 
     db.run(`
         CREATE TABLE IF NOT EXISTS payment_history (
@@ -27,14 +35,23 @@ db.serialize(() => {
         )
     `);
 
+    // ==========================
+    // LISTS
+    // ==========================
+
     db.run(`
         CREATE TABLE IF NOT EXISTS lists (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_phone TEXT,
             list_name TEXT,
+            status TEXT DEFAULT 'DRAFT',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `);
+
+    // ==========================
+    // LIST ITEMS
+    // ==========================
 
     db.run(`
         CREATE TABLE IF NOT EXISTS list_items (
@@ -46,86 +63,82 @@ db.serialize(() => {
         )
     `);
 
+    // ==========================
+    // SETTINGS
+    // ==========================
+
+    db.run(`
+        CREATE TABLE IF NOT EXISTS settings (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            fee_1_5 INTEGER,
+
+            fee_6_15 INTEGER,
+
+            fee_16_30 INTEGER,
+
+            fee_31_100 INTEGER,
+
+            fee_101_plus INTEGER
+
+        )
+    `);
+
+    // ==========================
+    // DATABASE MIGRATIONS
+    // ==========================
+
+    db.run(`
+        ALTER TABLE lists
+        ADD COLUMN status TEXT DEFAULT 'DRAFT'
+    `, (err) => {
+
+        if (err) {
+            console.log("Status column already exists.");
+        } else {
+            console.log("Status column added successfully.");
+        }
+
+    });
+
+    // ==========================
+    // DEFAULT SETTINGS
+    // ==========================
+
+    db.get(
+        "SELECT * FROM settings",
+        [],
+        (err, row) => {
+
+            if (!row) {
+
+                db.run(
+                    `
+                    INSERT INTO settings
+                    (
+                        fee_1_5,
+                        fee_6_15,
+                        fee_16_30,
+                        fee_31_100,
+                        fee_101_plus
+                    )
+                    VALUES (?, ?, ?, ?, ?)
+                    `,
+                    [
+                        500,
+                        1000,
+                        2000,
+                        3500,
+                        5000
+                    ]
+                );
+
+            }
+
+        }
+    );
+
 });
-db.run(`
-CREATE TABLE IF NOT EXISTS settings (
 
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-    fee_1_5 INTEGER,
-
-    fee_6_15 INTEGER,
-
-    fee_16_30 INTEGER,
-
-    fee_31_100 INTEGER,
-
-    fee_101_plus INTEGER
-
-)
-`);
-db.get(
-    "SELECT * FROM settings",
-    [],
-    (err, row) => {
-
-        if (!row) {
-
-            db.run(
-                `
-                INSERT INTO settings
-                (
-                    fee_1_5,
-                    fee_6_15,
-                    fee_16_30,
-                    fee_31_100,
-                    fee_101_plus
-                )
-                VALUES (?, ?, ?, ?, ?)
-                `,
-                [
-                    500,
-                    1000,
-                    2000,
-                    3500,
-                    5000
-                ]
-            );
-
-        }
-
-    }
-);
-db.get(
-    "SELECT * FROM settings",
-    [],
-    (err, row) => {
-
-        if (!row) {
-
-            db.run(
-                `
-                INSERT INTO settings
-                (
-                    fee_1_5,
-                    fee_6_15,
-                    fee_16_30,
-                    fee_31_100,
-                    fee_101_plus
-                )
-                VALUES (?, ?, ?, ?, ?)
-                `,
-                [
-                    500,
-                    1000,
-                    2000,
-                    3500,
-                    5000
-                ]
-            );
-
-        }
-
-    }
-);
 module.exports = db;

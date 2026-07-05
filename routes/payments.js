@@ -3,6 +3,13 @@ const router = express.Router();
 
 const db = require("../database");
 const calculateFee = require("../helpers/calculateFee");
+
+/*
+|--------------------------------------------------------------------------
+| PAYMENT HISTORY
+|--------------------------------------------------------------------------
+*/
+
 router.get("/payment-history", (req, res) => {
 
     db.all(
@@ -34,6 +41,13 @@ router.get("/payment-history", (req, res) => {
     );
 
 });
+
+/*
+|--------------------------------------------------------------------------
+| EXECUTE PAYMENT
+|--------------------------------------------------------------------------
+*/
+
 router.post("/execute-payment", (req, res) => {
 
     const { list_id } = req.body;
@@ -86,11 +100,10 @@ router.post("/execute-payment", (req, res) => {
                         total_amount += item.amount;
                     });
 
-                   const service_fee = calculateFee(recipients);
+                    const service_fee = calculateFee(recipients);
                     const total_paid = total_amount + service_fee;
 
-                    const reference =
-                        "PAY" + Date.now();
+                    const reference = "PAY" + Date.now();
 
                     db.run(
                         `INSERT INTO payment_history
@@ -115,33 +128,47 @@ router.post("/execute-payment", (req, res) => {
                             total_paid,
                             "COMPLETED"
                         ],
-                        function(err){
+                        function (err) {
 
-                            if(err){
+                            if (err) {
                                 return res.json({
-                                    message:"Database error"
+                                    message: "Database error"
                                 });
                             }
 
-                            res.json({
+                            db.run(
+                                "UPDATE lists SET status = 'COMPLETED' WHERE id = ?",
+                                [list_id],
+                                (updateErr) => {
 
-                                message:"Batch payment completed",
+                                    if (updateErr) {
+                                        return res.json({
+                                            message: "Database error"
+                                        });
+                                    }
 
-                                reference,
+                                    res.json({
 
-                                list_name:list.list_name,
+                                        message: "Batch payment completed",
 
-                                recipients,
+                                        reference,
 
-                                total_amount,
+                                        list_name: list.list_name,
 
-                                service_fee,
+                                        recipients,
 
-                                total_paid,
+                                        total_amount,
 
-                                status:"COMPLETED"
+                                        service_fee,
 
-                            });
+                                        total_paid,
+
+                                        status: "COMPLETED"
+
+                                    });
+
+                                }
+                            );
 
                         }
                     );
@@ -153,6 +180,13 @@ router.post("/execute-payment", (req, res) => {
     );
 
 });
+
+/*
+|--------------------------------------------------------------------------
+| PREVIEW PAYMENT
+|--------------------------------------------------------------------------
+*/
+
 router.post("/preview-payment", (req, res) => {
 
     const { list_id } = req.body;
@@ -188,7 +222,7 @@ router.post("/preview-payment", (req, res) => {
                 total_amount += item.amount;
             });
 
-           const service_fee = calculateFee(recipients); 
+            const service_fee = calculateFee(recipients);
 
             db.get(
                 "SELECT list_name FROM lists WHERE id = ?",
@@ -216,4 +250,5 @@ router.post("/preview-payment", (req, res) => {
     );
 
 });
+
 module.exports = router;
